@@ -1,16 +1,33 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<style>
-		body {font-family:"Franklin Gothic Medium","Franklin Gothic","ITC Franklin Gothic",serif;background-color:#eee}
-		p {margin: 3px}
-	</style>
-</head>
-<body>
-	<a style="display: inline-block;" href="/logout">logout</a>
-	<form method="post" action="enter">
-		<p>Room:<br> <input name="room" /></p>
-		<input type="submit" value="enter" />
-	</form>
-</body>
+	<head>
+		<style>
+			body {font-family:"Franklin Gothic Medium","Franklin Gothic","ITC Franklin Gothic",serif;background-color:#eee}
+			p {margin: 3px}
+		</style>
+	</head>
+	<body>
+		<a style="" href="/logout">logout</a><br>
+		<p style="display: inline-block;">name: </p><p id="name" style="display: inline-block;"></p><br>
+		<form method="post" action="enter">
+			<p>Room:<br> <input name="room" /></p>
+			<input type="submit" value="enter" />
+		</form>
+	</body>
+	<script>
+		function getCookie(name) {
+			for(let i = 0; i < cookies.length; i++) {
+				let sep = cookies[i].indexOf('=');
+				let cookie_name = cookies[i].substring(0, sep);
+				let cookie_value = cookies[i].substring(sep + 1);
+				if(cookie_name === name){
+					return cookie_value;
+				}
+			}
+		}
+		
+		let cookies = document.cookie.split("; ");
+		
+		document.getElementById("name").innerHTML = getCookie("name");
+	</script>
 </html>
