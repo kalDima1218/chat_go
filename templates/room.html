@@ -20,8 +20,8 @@
 		</div>
 		<form method="post" action="post">
 			<p>Text:<br> <textarea name="text" ></textarea></p>
-		<input type="submit" value="send" />
-	</form>
+			<input type="submit" value="send" />
+		</form>
 	</body>
 	<script>
 		function getCookie(name) {
@@ -37,7 +37,7 @@
 
 		function update(){
 			let request = new XMLHttpRequest();
-			request.open("GET", "http://127.0.0.1:8080/get");
+			request.open("GET", "http://89.223.68.37:8080/get");
 			request.responseType = "text";
 			request.send();
 			request.onload = function() {
@@ -50,6 +50,6 @@
 		document.getElementById("name").innerHTML = getCookie("name");
 		document.getElementById("room").innerHTML = getCookie("room");
 
-	setInterval(update, 100);
+		setInterval(update, 100);
 	</script>
 </html>
