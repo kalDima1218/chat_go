@@ -1,0 +1,55 @@
+<html lang="ru">
+	<head>
+		<style>
+			body {font-family:"Franklin Gothic Medium","Franklin Gothic","ITC Franklin Gothic",serif;background-color:#eee}
+			.text_space {
+				background:#fff;
+				border-radius:2px;
+				border:1px solid #b4b4b4;
+				width:500px;
+			}
+			p {margin: 3px}
+		</style>
+	</head>
+	<body>
+		<a style="display: inline-block;" href="/logout">logout</a><p style="display: inline-block;"></p><a style="display: inline-block;margin-left:5px;" href="/leave">leave</a><br>
+		<p style="display: inline-block;">name: </p><p id="name" style="display: inline-block;"></p><br>
+		<p style="display: inline-block;">room: </p><p id="room" style="display: inline-block;"></p><br>
+		<div class="text_space" style="right:10px;margin-top:10px;">
+			<article id="data" style="margin-left:10px"></article>
+		</div>
+		<form method="post" action="post">
+			<p>Text:<br> <textarea name="text" ></textarea></p>
+			<input type="submit" value="send" />
+		</form>
+	</body>
+	<script>
+		function getCookie(name) {
+			for(let i = 0; i < cookies.length; i++) {
+				let sep = cookies[i].indexOf('=');
+				let cookie_name = cookies[i].substring(0, sep);
+				let cookie_value = cookies[i].substring(sep + 1);
+				if(cookie_name === name){
+					return cookie_value;
+				}
+			}
+		}
+
+		function update(){
+			let request = new XMLHttpRequest();
+			request.open("GET", "http://127.0.0.1:8080/get");
+			request.responseType = "text";
+			request.send();
+			request.onload = function() {
+				document.getElementById("data").innerHTML = request.response;
+			};
+		}
+
+		let cookies = document.cookie.split("; ");
+
+		document.getElementById("name").innerHTML = getCookie("name");
+		document.getElementById("room").innerHTML = getCookie("room");
+
+		setInterval(update, 100);
+	</script>
+</html>
