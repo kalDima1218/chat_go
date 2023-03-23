@@ -58,13 +58,17 @@ func checkRoom(r *http.Request) bool{
 	}
 }
 
+func redirectToIndex(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "http://" + url + ":" + port + "/", http.StatusSeeOther)
+}
+
 func index(w http.ResponseWriter, r *http.Request) {
 	if checkUser(r){
 		if checkRoom(r){
 			page, _ := template.ParseFiles(path.Join("templates", "room.html"))
 			page.Execute(w, "")
 		}else{
-			page, _ := template.ParseFiles(path.Join("templates", "index.html"))
+			page, _ := template.ParseFiles(path.Join("templates", "enter_room.html"))
 			page.Execute(w, "")
 		}
 	}else{
@@ -76,7 +80,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 func reg(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+		redirectToIndex(w, r)
 		return
 	}
 	var name = r.FormValue("name")
@@ -85,7 +89,7 @@ func reg(w http.ResponseWriter, r *http.Request) {
 	_, okName := names[name]
 	_, okLogin := logins[login]
 	if name == "" || login == "" || password == "" || okName || okLogin{
-		http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+		redirectToIndex(w, r)
 		return
 	}
 	users[name] = newUser(name, login, password)
@@ -97,25 +101,25 @@ func reg(w http.ResponseWriter, r *http.Request) {
 	users[name] = usr
 	http.SetCookie(w, &http.Cookie{Name: "name", Value: name})
 	http.SetCookie(w, &http.Cookie{Name: "sid", Value: users[name].sid})
-	http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+	redirectToIndex(w, r)
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+		redirectToIndex(w, r)
 		return
 	}
 	var login = r.FormValue("login")
 	var password = r.FormValue("password")
 	_, ok := logins[login]
 	if !ok{
-		http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+		redirectToIndex(w, r)
 		return
 	}
 	var name = logins[login]
 	var usr = users[name]
 	if usr.password != password{
-		http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+		redirectToIndex(w, r)
 		return
 	}
 	usr.sid = strconv.Itoa(rand.Int())
@@ -123,11 +127,11 @@ func login(w http.ResponseWriter, r *http.Request) {
 	users[name] = usr
 	http.SetCookie(w, &http.Cookie{Name: "name", Value: name})
 	http.SetCookie(w, &http.Cookie{Name: "sid", Value: users[name].sid})
-	http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+	redirectToIndex(w, r)
 }
 func logout(w http.ResponseWriter, r *http.Request) {
 	resetCookie(w)
-	http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+	redirectToIndex(w, r)
 }
 
 func enterRoom(w http.ResponseWriter, r *http.Request) {
@@ -136,12 +140,12 @@ func enterRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	var room = r.FormValue("room")
 	http.SetCookie(w, &http.Cookie{Name: "room", Value: room})
-	http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+	redirectToIndex(w, r)
 }
 
 func leaveRoom(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: "room", Value: "", MaxAge: -1})
-	http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+	redirectToIndex(w, r)
 }
 
 func post(w http.ResponseWriter, r *http.Request){
@@ -150,7 +154,7 @@ func post(w http.ResponseWriter, r *http.Request){
 	if checkUser(r) && checkRoom(r){
 		data[cookieRoom.Value]+=cookieName.Value + ": " + r.FormValue("text")+"<br>"
 	}
-	http.Redirect(w, r, "http://127.0.0.1:8080/", http.StatusSeeOther)
+	redirectToIndex(w, r)
 }
 
 func get(w http.ResponseWriter, r *http.Request){
@@ -170,6 +174,9 @@ var users = make(map[string]user)
 var logins = make(map[string]string)
 var names = make(map[string]bool)
 
+var url = "127.0.0.1"
+var port = "8080"
+
 func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/reg", reg)
@@ -179,5 +186,5 @@ func main() {
 	http.HandleFunc("/leave", leaveRoom)
 	http.HandleFunc("/post", post)
 	http.HandleFunc("/get", get)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":" + port, nil)
 }
