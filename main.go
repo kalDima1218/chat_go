@@ -10,18 +10,189 @@ import (
 	"time"
 )
 
-type user struct{
-	name string
-	login, password string
-	sid string
+type Item struct {
+	k int
+	sid Sid
+}
+
+func newItem(x Sid) Item{
+	var tmp Item
+	tmp.k = int(x.expiration.Unix())
+	tmp.sid = x
+	return tmp
+}
+
+type Node struct{
+	i Item
+	p int
+	l, r, parent *Node
+}
+
+func newNode(x Item) *Node {
+	var tmp Node
+	tmp.p = rand.Int()
+	tmp.i = x
+	return &tmp
+}
+
+func _merge(l *Node, r *Node) *Node {
+	if l == nil{
+		return r
+	}
+	if r == nil{
+		return l
+	}
+	if l.p > r.p{
+		r.parent = l
+		l.r = _merge(l.r, r)
+		return l
+	}else{
+		l.parent = r
+		r.l = _merge(l, r.l)
+		return r
+	}
+}
+
+func _split(p *Node, x int) (*Node, *Node){
+	if p == nil{
+		return nil, nil
+	}
+	if p.i.k <= x{
+		var l, r = _split(p.r, x)
+		if l != nil{
+			l.parent = p
+		}
+		p.r = l
+		return p, r
+	}else{
+		var l, r = _split(p.l, x)
+		if r != nil{
+			r.parent = p
+		}
+		p.l = r
+		return l, p
+	}
+}
+
+func _print(p *Node){
+	if p.l != nil{
+		_print(p.l)
+	}
+	fmt.Println(p.i.k)
+	if p.r != nil{
+		_print(p.r)
+	}
+}
+
+type Treap struct{
+	_root, _begin, _end *Node
+}
+
+func (t *Treap)_updBegin(){
+	var p = t._root
+	for p.l != nil{
+		p = p.l
+	}
+	t._begin = p
+}
+
+func (t *Treap)_updEnd(){
+	var p = t._root
+	for p.r != nil{
+		p = p.r
+	}
+	t._end = p
+}
+
+func (t *Treap)begin() *Node{
+	return t._begin
+}
+
+func (t *Treap)end() *Node{
+	return t._end
+}
+
+func (t *Treap)count(x Item) int{
+	var p = t._root
+	for p.i != x{
+		if p.r != nil && p.i.k < x.k{
+			p = p.r
+			continue
+		}
+		if p.l != nil && x.k < p.i.k{
+			p = p.l
+			continue
+		}
+		break
+	}
+	if p.i == x{
+		return 1
+	}else{
+		return 0
+	}
+}
+
+func (t *Treap)find(x Item) (*Node, bool){
+	var p = t._root
+	for p.i != x{
+		if p.r != nil && p.i.k < x.k{
+			p = p.r
+			continue
+		}
+		if p.l != nil && x.k < p.i.k{
+			p = p.l
+			continue
+		}
+		break
+	}
+	return p, p.i == x
+}
+
+func (t *Treap)insert(x Item){
+	if t._root != nil && t.count(x) != 0{
+		return
+	}
+	var l, r = _split(t._root, x.k)
+	t._root = _merge(l, _merge(newNode(x), r))
+	t._updBegin()
+	t._updEnd()
+}
+
+func (t *Treap)erase(x Item){
+	if t._root == nil || t.count(x) == 0{
+		return
+	}
+	var l, r = _split(t._root, x.k)
+	l, _ = _split(l, x.k-1)
+	t._root = _merge(l, r)
+	t._updBegin()
+	t._updEnd()
+}
+
+func (t *Treap)print(){
+	_print(t._root)
+}
+
+
+
+type Sid struct{
+	id string
 	expiration time.Time
 }
 
-func newUser(name string, login string, password string) user{
-	var tmp user
+type User struct{
+	name string
+	login, password string
+	sidsByTime Treap
+	sidsBySid map[string]time.Time
+}
+
+func newUser(name string, login string, password string) User {
+	var tmp User
 	tmp.name = name
 	tmp.login = login
 	tmp.password = password
+	tmp.sidsBySid = make(map[string]time.Time)
 	return tmp
 }
 
@@ -39,15 +210,37 @@ func resetCookie(w http.ResponseWriter){
 	http.SetCookie(w, &http.Cookie{Name: "room", Value: "", MaxAge: -1})
 }
 
+func checkSids(usr string){
+	user, ok := users[usr]
+	if ok{
+		for len(user.sidsBySid) > 0 && user.sidsByTime.begin().i.sid.expiration.Before(time.Now()){
+			delete(user.sidsBySid, user.sidsByTime.begin().i.sid.id)
+			user.sidsByTime.erase(user.sidsByTime.begin().i)
+		}
+	}
+}
+
 func checkUser(r *http.Request) bool{
 	usr, errName := r.Cookie("name")
 	sid, errSid := r.Cookie("sid")
-	if errName != nil || errSid != nil || users[usr.Value].expiration.Before(time.Now()) || users[usr.Value].sid != sid.Value{
+	if errName != nil || errSid != nil{
+		return false
+	}
+	checkSids(usr.Value)
+	sidExpiration, okUserSid := users[usr.Value].sidsBySid[sid.Value]
+	if errName != nil || errSid != nil || !okUserSid || sidExpiration.Before(time.Now()){
 		return false
 	}else{
 		_, ok := users[usr.Value]
 		return ok
 	}
+}
+
+func newSid()Sid{
+	var sid Sid
+	sid.expiration = time.Now().Add(24 * time.Hour)
+	sid.id = strconv.Itoa(rand.Int())
+	return sid
 }
 
 func checkRoom(r *http.Request) bool{
@@ -96,11 +289,12 @@ func reg(w http.ResponseWriter, r *http.Request) {
 	names[name] = true
 	logins[login] = name
 	var usr = users[name]
-	usr.sid = strconv.Itoa(rand.Int())
-	usr.expiration = time.Now().Add(24 * time.Hour)
+	var sid = newSid()
+	usr.sidsBySid[sid.id] = sid.expiration
+	usr.sidsByTime.insert(newItem(sid))
 	users[name] = usr
 	http.SetCookie(w, &http.Cookie{Name: "name", Value: name})
-	http.SetCookie(w, &http.Cookie{Name: "sid", Value: users[name].sid})
+	http.SetCookie(w, &http.Cookie{Name: "sid", Value: sid.id})
 	redirectToIndex(w, r)
 }
 
@@ -122,11 +316,12 @@ func login(w http.ResponseWriter, r *http.Request) {
 		redirectToIndex(w, r)
 		return
 	}
-	usr.sid = strconv.Itoa(rand.Int())
-	usr.expiration = time.Now().Add(24 * time.Hour)
+	var sid = newSid()
+	usr.sidsBySid[sid.id] = sid.expiration
+	usr.sidsByTime.insert(newItem(sid))
 	users[name] = usr
 	http.SetCookie(w, &http.Cookie{Name: "name", Value: name})
-	http.SetCookie(w, &http.Cookie{Name: "sid", Value: users[name].sid})
+	http.SetCookie(w, &http.Cookie{Name: "sid", Value: sid.id})
 	redirectToIndex(w, r)
 }
 func logout(w http.ResponseWriter, r *http.Request) {
@@ -164,12 +359,8 @@ func get(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func getRoomsList(w http.ResponseWriter, r *http.Request){
-
-}
-
 var data = make(map[string]string)
-var users = make(map[string]user)
+var users = make(map[string]User)
 
 var logins = make(map[string]string)
 var names = make(map[string]bool)
