@@ -74,34 +74,22 @@ func _split(p *Node, x int) (*Node, *Node){
 	}
 }
 
-func _print(p *Node){
-	if p.l != nil{
-		_print(p.l)
-	}
-	fmt.Println(p.i.k)
-	if p.r != nil{
-		_print(p.r)
-	}
-}
-
 type Treap struct{
 	_root, _begin, _end *Node
 }
 
 func (t *Treap)_updBegin(){
-	var p = t._root
-	for p.l != nil{
-		p = p.l
+	t._begin = t._root
+	for t._begin != nil && t._begin.l != nil{
+		t._begin = t._begin.l
 	}
-	t._begin = p
 }
 
 func (t *Treap)_updEnd(){
-	var p = t._root
-	for p.r != nil{
-		p = p.r
+	t._end = t._root
+	for t._end != nil && t._end.r != nil{
+		t._end = t._end.r
 	}
-	t._end = p
 }
 
 func (t *Treap)begin() *Node{
@@ -132,22 +120,6 @@ func (t *Treap)count(x Item) int{
 	}
 }
 
-func (t *Treap)find(x Item) (*Node, bool){
-	var p = t._root
-	for p.i != x{
-		if p.r != nil && p.i.k < x.k{
-			p = p.r
-			continue
-		}
-		if p.l != nil && x.k < p.i.k{
-			p = p.l
-			continue
-		}
-		break
-	}
-	return p, p.i == x
-}
-
 func (t *Treap)insert(x Item){
 	if t._root != nil && t.count(x) != 0{
 		return
@@ -169,15 +141,18 @@ func (t *Treap)erase(x Item){
 	t._updEnd()
 }
 
-func (t *Treap)print(){
-	_print(t._root)
-}
-
 
 
 type Sid struct{
 	id string
 	expiration time.Time
+}
+
+func newSid()Sid{
+	var sid Sid
+	sid.expiration = time.Now().Add(24 * time.Hour)
+	sid.id = strconv.Itoa(rand.Int())
+	return sid
 }
 
 type User struct{
@@ -217,6 +192,7 @@ func checkSids(usr string){
 			delete(user.sidsBySid, user.sidsByTime.begin().i.sid.id)
 			user.sidsByTime.erase(user.sidsByTime.begin().i)
 		}
+		users[usr] = user
 	}
 }
 
@@ -234,13 +210,6 @@ func checkUser(r *http.Request) bool{
 		_, ok := users[usr.Value]
 		return ok
 	}
-}
-
-func newSid()Sid{
-	var sid Sid
-	sid.expiration = time.Now().Add(24 * time.Hour)
-	sid.id = strconv.Itoa(rand.Int())
-	return sid
 }
 
 func checkRoom(r *http.Request) bool{
